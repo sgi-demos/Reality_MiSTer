@@ -104,6 +104,17 @@ architecture arch of RDP_Zbuffer is
    signal old_dz_1          : unsigned(15 downto 0)  := (others => '0');
    -- synthesis translate_on
    
+   -- STAGE_TEXSELECT
+   signal dzNew_1           : unsigned(15 downto 0) := (others => '0');
+   signal new_z_5           : unsigned(17 downto 0)  := (others => '0');
+   signal planar_2          : std_logic := '0';
+   signal old_z_2           : unsigned(17 downto 0)  := (others => '0');
+   signal old_dz_mem_2      : unsigned(3 downto 0) := (others => '0');
+   
+   -- synthesis translate_off
+   signal old_dz_2          : unsigned(15 downto 0)  := (others => '0');
+   -- synthesis translate_on
+   
    -- STAGE_COMBINER
    signal zNewSigned        : signed(19 downto 0);
    signal dzNewSigned       : signed(19 downto 0);
@@ -118,9 +129,9 @@ architecture arch of RDP_Zbuffer is
    signal is_near           : std_logic := '0';
    signal is_far            : std_logic := '0';
    signal is_overflow       : std_logic := '0';
-   signal new_z_5           : unsigned(17 downto 0)  := (others => '0');
-   signal old_z_2           : unsigned(17 downto 0)  := (others => '0');
-   signal old_dz_mem_2      : unsigned(3 downto 0) := (others => '0');
+   signal new_z_6           : unsigned(17 downto 0)  := (others => '0');
+   signal old_z_3           : unsigned(17 downto 0)  := (others => '0');
+   signal old_dz_mem_3      : unsigned(3 downto 0) := (others => '0');
    
    -- STAGE BLENDER
    signal cvg_dzShift       : unsigned(3 downto 0);
@@ -288,15 +299,38 @@ begin
       end if;
    end process;
    
+   -- STAGE_TEXSELECT
+   process (clk1x)
+   begin
+      if rising_edge(clk1x) then
+         
+         if (trigger = '1') then
+         
+            new_z_5      <= new_z_4;
+            old_z_2      <= old_z_1;
+            planar_2     <= planar_1;
+            old_dz_mem_3 <= old_dz_mem_2;
+            dzNew_1      <= dzNew;
+            
+            -- synthesis translate_off
+            old_dz_2 <= old_dz_1;
+            -- synthesis translate_on
+
+         end if;
+         
+      end if;
+   end process;
+   
+   
    -- STAGE_COMBINER
-   zNewSigned  <=  "00" & signed(new_z_4);
-   dzNewSigned <=  '0' & signed(dzNew) & "000";
+   zNewSigned  <=  "00" & signed(new_z_5);
+   dzNewSigned <=  '0' & signed(dzNew_1) & "000";
    diffZ       <= zNewSigned - dzNewSigned;
    
-   calc_max      <= '1' when (old_z_1 = 18x"3FFFF") else '0';
-   calc_front    <= '1' when (new_z_4 < old_z_1) else '0';
-   calc_near     <= '1' when (planar_1 = '1' or to_integer(diffZ) <= to_integer(old_z_1)) else '0';
-   calc_far      <= '1' when (planar_1 = '1' or (new_z_4 + (dzNew & "000")) >= old_z_1) else '0'; 
+   calc_max      <= '1' when (old_z_2 = 18x"3FFFF") else '0';
+   calc_front    <= '1' when (new_z_5 < old_z_2) else '0';
+   calc_near     <= '1' when (planar_2 = '1' or to_integer(diffZ) <= to_integer(old_z_2)) else '0';
+   calc_far      <= '1' when (planar_2 = '1' or (new_z_5 + (dzNew_1 & "000")) >= old_z_2) else '0'; 
    
    process (clk1x)
    begin
@@ -304,8 +338,8 @@ begin
          
          if (trigger = '1') then
          
-            new_z_5 <= new_z_4;
-            old_z_2 <= old_z_1;
+            new_z_6 <= new_z_5;
+            old_z_3 <= old_z_2;
             
             is_max       <= calc_max;
             is_front     <= calc_front;
@@ -325,20 +359,20 @@ begin
             end if;
             
             if (settings_otherModes.zCompare = '1') then
-               if (old_dz_mem_2 > dzPixEnc) then
+               if (old_dz_mem_3 > dzPixEnc) then
                   blend_shift_a <= "000";
-               elsif ((dzPixEnc - old_dz_mem_2) > 4) then
+               elsif ((dzPixEnc - old_dz_mem_3) > 4) then
                   blend_shift_a <= "100";
                else
-                  blend_shift_a <= resize(dzPixEnc - old_dz_mem_2, 3);
+                  blend_shift_a <= resize(dzPixEnc - old_dz_mem_3, 3);
                end if;
                
-               if (dzPixEnc > old_dz_mem_2) then
+               if (dzPixEnc > old_dz_mem_3) then
                   blend_shift_b <= "000";
-               elsif ((old_dz_mem_2 - dzPixEnc) > 4) then
+               elsif ((old_dz_mem_3 - dzPixEnc) > 4) then
                   blend_shift_b <= "100";
                else
-                  blend_shift_b <= resize(old_dz_mem_2 - dzPixEnc, 3);
+                  blend_shift_b <= resize(old_dz_mem_3 - dzPixEnc, 3);
                end if;
             else
                blend_shift_a <= "000";
@@ -351,32 +385,31 @@ begin
             end if;
             
             -- synthesis translate_off
-            export_zNewRaw  <= 14x"0" & new_z_4;
-            export_zOld     <= 14x"0" & old_z_1;
-            export_dzOld    <= old_dz_1;
-            export_dzNew    <= dzNew;
+            export_zNewRaw  <= 14x"0" & new_z_5;
+            export_zOld     <= 14x"0" & old_z_2;
+            export_dzOld    <= old_dz_2;
+            export_dzNew    <= dzNew_1;
             -- synthesis translate_on
 
          end if;
          
       end if;
    end process;
-   
+
+   -- STAGE_BLENDER
    zOverflow <= is_overflow;
-
-
-   cvg_dzShift(3) <= '1' when (dzNew(15 downto 8) > 0) else '0';
-   cvg_dzShift(2) <= '1' when ((dzNew(15 downto 12) & dzNew(7 downto 4)) > 0) else '0';
-   cvg_dzShift(1) <= '1' when ((dzNew(15 downto 14) & dzNew(11 downto 10) & dzNew(7 downto 6) & dzNew(3 downto 2)) > 0) else '0';
-   cvg_dzShift(0) <= '1' when ((dzNew(15) or dzNew(13) or dzNew(11) or dzNew(9) or dzNew(7) or dzNew(5) or dzNew(3) or dzNew(1)) = '1') else '0';
    
-   cvg_oldZ_shifted <= shift_right(old_z_2, to_integer(cvg_dzShift));
-   cvg_newZ_shifted <= shift_right(new_z_5, to_integer(cvg_dzShift));
+   cvg_dzShift(3) <= '1' when (dzNew_1(15 downto 8) > 0) else '0';
+   cvg_dzShift(2) <= '1' when ((dzNew_1(15 downto 12) & dzNew_1(7 downto 4)) > 0) else '0';
+   cvg_dzShift(1) <= '1' when ((dzNew_1(15 downto 14) & dzNew_1(11 downto 10) & dzNew_1(7 downto 6) & dzNew_1(3 downto 2)) > 0) else '0';
+   cvg_dzShift(0) <= '1' when ((dzNew_1(15) or dzNew_1(13) or dzNew_1(11) or dzNew_1(9) or dzNew_1(7) or dzNew_1(5) or dzNew_1(3) or dzNew_1(1)) = '1') else '0';
+   
+   cvg_oldZ_shifted <= shift_right(old_z_3, to_integer(cvg_dzShift));
+   cvg_newZ_shifted <= shift_right(new_z_6, to_integer(cvg_dzShift));
    
    cvg_sub <= cvg_oldZ_shifted - cvg_newZ_shifted;
    cvg_mul <= cvgCount_combine * cvg_sub(3 downto 0);
    
-   -- STAGE_BLENDER
    process (clk1x)
    begin
       if rising_edge(clk1x) then
@@ -419,14 +452,14 @@ begin
                zUsePixel <= '1';
             end if;
 
-            if    (new_z_5(17 downto 11) < 16#40#) then zResult <= "000" & new_z_5(16 downto 6) & "00";
-            elsif (new_z_5(17 downto 11) < 16#60#) then zResult <= "001" & new_z_5(15 downto 5) & "00";
-            elsif (new_z_5(17 downto 11) < 16#70#) then zResult <= "010" & new_z_5(14 downto 4) & "00";
-            elsif (new_z_5(17 downto 11) < 16#78#) then zResult <= "011" & new_z_5(13 downto 3) & "00";
-            elsif (new_z_5(17 downto 11) < 16#7C#) then zResult <= "100" & new_z_5(12 downto 2) & "00";
-            elsif (new_z_5(17 downto 11) < 16#7E#) then zResult <= "101" & new_z_5(11 downto 1) & "00";
-            elsif (new_z_5(17 downto 11) < 16#7F#) then zResult <= "110" & new_z_5(10 downto 0) & "00";
-            else                                        zResult <= "111" & new_z_5(10 downto 0) & "00";
+            if    (new_z_6(17 downto 11) < 16#40#) then zResult <= "000" & new_z_6(16 downto 6) & "00";
+            elsif (new_z_6(17 downto 11) < 16#60#) then zResult <= "001" & new_z_6(15 downto 5) & "00";
+            elsif (new_z_6(17 downto 11) < 16#70#) then zResult <= "010" & new_z_6(14 downto 4) & "00";
+            elsif (new_z_6(17 downto 11) < 16#78#) then zResult <= "011" & new_z_6(13 downto 3) & "00";
+            elsif (new_z_6(17 downto 11) < 16#7C#) then zResult <= "100" & new_z_6(12 downto 2) & "00";
+            elsif (new_z_6(17 downto 11) < 16#7E#) then zResult <= "101" & new_z_6(11 downto 1) & "00";
+            elsif (new_z_6(17 downto 11) < 16#7F#) then zResult <= "110" & new_z_6(10 downto 0) & "00";
+            else                                        zResult <= "111" & new_z_6(10 downto 0) & "00";
             end if;
             
             zResult(1 downto 0) <= dzPixEnc(3 downto 2);

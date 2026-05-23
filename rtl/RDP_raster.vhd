@@ -769,8 +769,9 @@ begin
    end process;
    
    -- drawing
-   drawLineDone <= '1' when (linestate = DRAWLINE and settings_otherModes.cycleType(1) = '0' and line_posX = line_endX) else 
-                   '1' when (linestate = DRAWLINE and settings_otherModes.cycleType = "10" and settings_poly.lft = '1' and line_posX > line_endX) else 
+   drawLineDone <= '1' when (linestate = DRAWLINE and settings_otherModes.cycleType = "00" and line_posX = line_endX) else 
+                   '1' when (linestate = DRAWLINE and settings_otherModes.cycleType = "01" and settings_poly.lft = '0'and line_posX = line_endX) else 
+                   '1' when (linestate = DRAWLINE and (settings_otherModes.cycleType = "01" or settings_otherModes.cycleType = "10") and settings_poly.lft = '1' and line_posX > line_endX) else 
                    '1' when (linestate = DRAWLINE and settings_otherModes.cycleType = "10" and settings_poly.lft = '0' and line_posX < line_endX) else 
                    '1' when (linestate = FILLLINE and line_posX > line_endX) else 
                    '0';
