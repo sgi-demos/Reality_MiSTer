@@ -122,8 +122,7 @@ Escalating levels, each independently useful:
 
 ### Phase 6 — The box
 
-Navy body (O2 lineage), jungle-green / translucent accent (console lineage), SGI-style
-badge: **Reality**. 3D-printed enclosure around the board. `hostname reality`.
+Indy body, N64 color, SGI logo badge, **Reality** name. 3D-printed enclosure around the board.
 
 ## Working practices
 
