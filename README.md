@@ -6,7 +6,7 @@ The goal is to get IRIX (probably 6.2) running on this system, with minimal hard
 
 Graphics can leverage the IRIS GL software reference rasterizer work done for the [Alice4](https://lkesteloot.github.io/alice/alice4/) project and extended by the [sgi-demos](https://github.com/sgi-demos) project.  And of course SGI emulation will be of immense help too: [MAME](https://github.com/mamedev/mame/tree/master/src/mame/sgi) and [IRIS](https://github.com/techomancer/iris).
 
-The name 'Reality' is chosen as it alludes to SGI's 'Project Reality' code name for the N64 work, along with SGI's Reality Engine and Infinite Reality systems.  And unlike emulation, it brings SGI hardware back to *reality*.
+The name 'Reality' is chosen as it alludes to SGI's 'Project Reality' code name for their N64 work, along with SGI's Reality Engine and Infinite Reality systems.  And unlike emulation, it brings SGI hardware back to *reality*.
 
 
 # Project Plan
@@ -149,7 +149,7 @@ IRIS GL rasterizer lineage: **Alice4** (Lawrence Kesteloot et al.) and **sgi-dem
 Reference emulation: **MAME** SGI drivers, **IRIS** (techomancer), **ares**.
 
 
-## N64_MiSTer readme
+## Upstream N64_MiSTer notes
 
 ## Hardware Requirements
 SDRAM of any size is required.
