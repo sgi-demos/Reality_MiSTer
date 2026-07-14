@@ -1,12 +1,155 @@
 # Reality_MiSTer
 
-This project aims to create a retro-modern FPGA-based SGI workstation ('the SGI Reality') based on the [N64_MiSTer](https://github.com/MiSTer-devel/N64_MiSTer) work.  The goal is to get IRIX (probably 6.2) running on this system, with minimal hardware capability departures from the N64 (though probably more RAM will be necessary as IRIX demands it).  Graphics can leverage the IRIS GL software reference rasterizer work done for the [Alice4](https://lkesteloot.github.io/alice/alice4/) project and extended by the [sgi-demos](https://github.com/sgi-demos) project.  And of course SGI emulation with [MAME](https://github.com/mamedev/mame/tree/master/src/mame/sgi) and [IRIS](https://github.com/techomancer/iris) will be immensely helpful too.
+This (likely multiyear) project aims to create a retro-modern FPGA-based SGI workstation ('SGI Reality') based on Robert Peip's [N64_MiSTer](https://github.com/MiSTer-devel/N64_MiSTer) work.  
 
-The name 'Reality' is chosen as it alludes to SGI's 'Project Reality' code name for the N64 work, along with SGI's Reality Engine and Infinite Reality systems.  And unlike emulation, it brings SGI hardware back to reality.
+The goal is to get IRIX (probably 6.2) running on this system, with minimal hardware capability departures from the N64 to start (though probably more RAM will be necessary as IRIX demands it). 
 
-Probably a multi-year project!
+Graphics can leverage the IRIS GL software reference rasterizer work done for the [Alice4](https://lkesteloot.github.io/alice/alice4/) project and extended by the [sgi-demos](https://github.com/sgi-demos) project.  And of course SGI emulation will be of immense help too: [MAME](https://github.com/mamedev/mame/tree/master/src/mame/sgi) and [IRIS](https://github.com/techomancer/iris).
 
-# N64_MiSTer readme
+The name 'Reality' is chosen as it alludes to SGI's 'Project Reality' code name for the N64 work, along with SGI's Reality Engine and Infinite Reality systems.  And unlike emulation, it brings SGI hardware back to *reality*.
+
+
+# Project Plan
+
+**Architecture thesis in one line:** *N64's soul (R4300i CPU, RSP/RDP graphics) and
+Indy's skeleton (MC / HPC3 / serial / SCSI) so IRIX recognizes the machine.*
+
+---
+
+## Design constraints
+
+- **Minimal departures from N64 hardware.** Known-necessary departures, stated up front:
+  - **RAM:** 64–128 MB unified memory instead of 4–8 MB RDRAM (IRIX minimums).
+  - **CPU identity:** COP0 PRId reports R4600 (IRIX has no R4300 entry in its CPU tables;
+    cache-op semantics of R4300/R4600 are close — both primary-cache-only).
+  - **Serial console:** Z8530 (Z85C30) UART at Indy addresses, for PROM/kernel console.
+  - **Block storage:** WD33C93 SCSI register facade, with actual block I/O bridged to the
+    MiSTer HPS (ARM/Linux) side, ao486-IDE style. Backed by SD card.
+  - **Deleted:** PIF, cartridge bus, controller ports.
+- **Graphics are RCP-only.** No Newport, no GR2. RSP + RDP are the machine's native graphics.
+- **Memory map:** N64 RDRAM at 0x0 coincides with where IRIX expects RAM. RCP registers stay
+  at 0x0400_0000–0x04FF_FFFF (IRIX doesn't claim that region). MC / HPC3 / peripherals are
+  added at their Indy physical addresses (0x1FA0_0000, 0x1FB8_0000, ...).
+- **Development platform:** DE10-Nano / MiSTer. If Cyclone V capacity becomes the binding
+  constraint, escape hatch is a larger open Artix-7 / Kintex board; the RTL stays portable.
+
+## Reference implementations (oracles)
+
+- **MAME** `src/mame/sgi` — IP24 (Indy) driver is executable documentation for MC/HPC3
+  register behavior; co-simulation diff target for chipset shims.
+- **IRIS** (techomancer) — Indigo-family emulator; second independent SGI reference.
+- **ares** — accuracy-reference N64 emulator; oracle for CPU/RCP behavior.
+- **n64-systemtest** — hardware-validated CPU/RCP test suite; baseline before our own tests.
+- **Alice4 / sgi-demos `libgl`** — IRIS GL implementation with swappable rasterizer
+  backends; the software reference rasterizer is the golden image source for RDP output.
+
+## Phases
+
+### Phase 0 — Toolchain (zero hardware)
+
+Verilator build of the N64 core as a C++ simulation; libdragon as the MIPS cross-toolchain
+(gcc for R4300i, linker scripts, ROM packaging for free). Prove the pipeline by running
+existing known-good ROMs (libdragon examples, n64-systemtest) in simulation, with output via
+the ISViewer debug channel and framebuffer dumps to PNG.
+
+**Exit criterion:** build core → load ROM → run N cycles → observe correct output, entirely
+in simulation.
+
+### Phase 1 — The probe: TLB / exception torture ROM
+
+A bare-metal C + inline-asm ROM exercising what IRIX needs and games never touch:
+
+1. `tlbwi`/`tlbr` round-trip through all 32 entries (EntryHi/EntryLo exactness)
+2. `tlbp` probe hits and misses (P bit)
+3. Deliberate TLB refill exception: unmapped access → refill vector → verify
+   BadVAddr/Context → write entry in handler → eret → access completes
+4. TLB Mod (dirty-bit) exception on write to read-only page (copy-on-write path)
+5. ASID isolation: same VA, two ASIDs, distinct PAs; switch and verify (context switching)
+6. Wired entries; paired even/odd page semantics
+
+Each test reports PASS/FAIL over the debug channel.
+
+**Reading the result:**
+- *Green:* foundation solid → buy hardware, proceed.
+- *Yellow (refill/Mod/ASID failures):* expected; find/fix bugs in the core with
+  MAME/ares as oracle. Doubles as FPGA apprenticeship + upstream contribution.
+- *Red (basics broken / sim unbuildable):* major information, cheaply bought — reassess.
+
+### Phase 2 — GL-first: IRIS GL on the RDP (no IRIX yet)
+
+Port sgi-demos `libgl` with a new **RDP backend** (third backend beside the software
+reference rasterizer and `ogl_rasterizer.c`): emit RDP triangle/span commands instead of
+walking spans in software. CPU does transform/clip initially (as Indigo LG1 did); RSP
+microcode transforms come later as an optimization.
+
+Runs bare-metal (or Linux-hosted) on the core — no kernel driver needed. The 15-demo
+sgi-demos corpus is the conformance suite; the software rasterizer is the golden reference;
+the existing pixel-variance smoke-test harness retargets to diff RDP output against it.
+
+**Exit criterion:** `buttonfly` (or peers) rendering via RDP, pixel-diffed against the
+software rasterizer.
+
+**This is the early dopamine milestone — an SGI demo on N64 silicon, months not years in.**
+
+### Phase 3 — Indy skeleton grafts
+
+MC memory controller, HPC3, Z8530, SCSI facade as new RTL modules, validated by
+co-simulation against MAME's IP24 driver (same register pokes, diff the behavior).
+PRId lie. PIF/cartridge deletion. Capacity check on Cyclone V; migrate boards if needed.
+
+**Exit criterion:** Indy PROM (or a minimal ARCS-faking bootloader) runs and reaches a
+serial console prompt on the core.
+
+Note: real PROM is the romantic path and a brutal test of shim fidelity; a minimal ARCS
+firmware fake is months faster. Decide when we get here.
+
+### Phase 4 — IRIX boots
+
+Kernel loads from SCSI(SD), probes MC/HPC3, mounts root, reaches single-user then
+multi-user over serial console. Expect the long tail here: TLB/cache edge cases,
+interrupt topology, timer behavior. Co-simulation and kernel-source spelunking
+(NetBSD/Linux sgimips as auxiliary references) are the tools.
+
+**Exit criterion:** `IRIX Release 6.2 IP24 reality` login over serial. Hostname is
+non-negotiable.
+
+### Phase 5 — Graphics under IRIX
+
+Escalating levels, each independently useful:
+
+1. **Userspace RCP access:** mmap physical RCP registers from an IRIX process; run the
+   Phase 2 `libgl`+RDP stack under IRIX with no kernel driver.
+2. **Kernel gfx driver as dumb framebuffer:** textport and X11 on RCP video output.
+   (Hardest software in the project; IRIX gfx subsystem is undocumented — Newport driver
+   RE + IP24 kernel symbols light the way. Optional for a long time thanks to level 1.)
+3. **GL subset on RSP microcode:** transforms on RSP, spans on RDP — the blocks doing
+   the jobs they were born for. The trophy milestone.
+
+### Phase 6 — The box
+
+Navy body (O2 lineage), jungle-green / translucent accent (console lineage), SGI-style
+badge: **Reality**. 3D-printed enclosure around the board. `hostname reality`.
+
+## Working practices
+
+- Fork tracks upstream (`upstream` remote, periodic merges) until RTL genuinely diverges.
+- Probe/test work lives in its own directory (`reality/`), core RTL untouched for as long
+  as possible.
+- Co-simulation diffing (Verilator model vs MAME on identical stimuli) as standard debugging
+  practice — cheapest way to localize ASIC-behavior mistakes.
+- Every phase has a demoable exit criterion; the project survives on visible wins.
+
+## Credits & license
+
+Built on **N64_MiSTer** by **Robert Peip (FPGAzumSpass)** — the R4300i, RSP, and RDP
+implementations that make this thinkable. This fork inherits the upstream license
+(verify and state exact license here before divergence).
+
+IRIS GL rasterizer lineage: **Alice4** (Lawrence Kesteloot et al.) and **sgi-demos**.
+Reference emulation: **MAME** SGI drivers, **IRIS** (techomancer), **ares**.
+
+
+## N64_MiSTer readme
 
 ## Hardware Requirements
 SDRAM of any size is required.
