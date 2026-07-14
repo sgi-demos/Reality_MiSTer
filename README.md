@@ -2,7 +2,7 @@
 
 This project aims to create a retro-modern FPGA-based SGI workstation ('the SGI Reality') based on the [N64_MiSTer](https://github.com/MiSTer-devel/N64_MiSTer) work.  The goal is to get IRIX (probably 6.2) running on this system, with minimal hardware capability departures from the N64 (though probably more RAM will be necessary as IRIX demands it).  Graphics can leverage the IRIS GL software reference rasterizer work done for the [Alice4](https://lkesteloot.github.io/alice/alice4/) project and extended by the [sgi-demos](https://github.com/sgi-demos) project.  And of course SGI emulation with [MAME](https://github.com/mamedev/mame/tree/master/src/mame/sgi) and [IRIS](https://github.com/techomancer/iris) will be immensely helpful too.
 
-The name 'Reality' is chosen as it alludes to SGI's 'Project Reality' code name for the N64 work, along with being below the 'Infinite Reality' product line in capability.  And also unlike emulation, it brings SGI hardware back to reality.
+The name 'Reality' is chosen as it alludes to SGI's 'Project Reality' code name for the N64 work, along with SGI's Reality Engine and Infinite Reality systems.  And unlike emulation, it brings SGI hardware back to reality.
 
 Probably a multi-year project!
 
