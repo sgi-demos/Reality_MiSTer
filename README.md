@@ -1,22 +1,19 @@
-# Reality_MiSTer
+# SGI Reality
 
-This (likely multiyear) project aims to create a retro-modern FPGA-based SGI workstation ('SGI Reality') based on Robert Peip's [N64_MiSTer](https://github.com/MiSTer-devel/N64_MiSTer) work.  
+![Reality](reality.jpeg)
 
-The goal is to get IRIX (probably 6.2) running on this system, with minimal hardware capability departures from the N64 to start (though probably more RAM will be necessary as IRIX demands it). 
+### This project will create a retro-modern FPGA-based SGI workstation based on Robert Peip's [N64_MiSTer](https://github.com/MiSTer-devel/N64_MiSTer) work, with hardware capabilities similar to the N64 but running IRIX.
 
-Graphics can leverage the IRIS GL software reference rasterizer work done for the [Alice4](https://lkesteloot.github.io/alice/alice4/) project and extended by the [sgi-demos](https://github.com/sgi-demos) project.  And of course SGI emulation will be of immense help too: [MAME](https://github.com/mamedev/mame/tree/master/src/mame/sgi) and [IRIS](https://github.com/techomancer/iris).
+The name 'Reality' was chosen as it alludes to SGI's 'Project Reality' code name for their N64 work, as well as SGI's Reality Engine and Infinite Reality systems.  And unlike emulation, it brings SGI hardware back to *reality*.
 
-The name 'Reality' is chosen as it alludes to SGI's 'Project Reality' code name for their N64 work, along with SGI's Reality Engine and Infinite Reality systems.  And unlike emulation, it brings SGI hardware back to *reality*.
+Other work to lean on will be SGI emulation from [MAME](https://github.com/mamedev/mame/tree/master/src/mame/sgi) and [IRIS](https://github.com/techomancer/iris) projects, and the GL rasterizer from the [Alice4](https://lkesteloot.github.io/alice/alice4/) and [sgi-demos](https://github.com/sgi-demos) projects.
 
 
-# Project Plan
+## Project Plan
 
-**Architecture thesis in one line:** *N64's soul (R4300i CPU, RSP/RDP graphics) and
-Indy's skeleton (MC / HPC3 / serial / SCSI) so IRIX recognizes the machine.*
+### Goal: Build N64's soul (R4300i CPU, RSP/RDP graphics) with Indy's skeleton (MC / HPC3 / serial / SCSI)
 
----
-
-## Design constraints
+### Design constraints
 
 - **Minimal departures from N64 hardware.** Known-necessary departures, stated up front:
   - **RAM:** 64–128 MB unified memory instead of 4–8 MB RDRAM (IRIX minimums).
@@ -33,7 +30,7 @@ Indy's skeleton (MC / HPC3 / serial / SCSI) so IRIX recognizes the machine.*
 - **Development platform:** DE10-Nano / MiSTer. If Cyclone V capacity becomes the binding
   constraint, escape hatch is a larger open Artix-7 / Kintex board; the RTL stays portable.
 
-## Reference implementations (oracles)
+### Reference implementations (oracles)
 
 - **MAME** `src/mame/sgi` — IP24 (Indy) driver is executable documentation for MC/HPC3
   register behavior; co-simulation diff target for chipset shims.
@@ -42,8 +39,6 @@ Indy's skeleton (MC / HPC3 / serial / SCSI) so IRIX recognizes the machine.*
 - **n64-systemtest** — hardware-validated CPU/RCP test suite; baseline before our own tests.
 - **Alice4 / sgi-demos `libgl`** — IRIS GL implementation with swappable rasterizer
   backends; the software reference rasterizer is the golden image source for RDP output.
-
-## Phases
 
 ### Phase 0 — Toolchain (zero hardware)
 
@@ -141,24 +136,24 @@ badge: **Reality**. 3D-printed enclosure around the board. `hostname reality`.
 
 ## Credits & license
 
-Built on **N64_MiSTer** by **Robert Peip (FPGAzumSpass)** — the R4300i, RSP, and RDP
+To be built on **N64_MiSTer** by **Robert Peip (FPGAzumSpass)** — the R4300i, RSP, and RDP
 implementations that make this thinkable. This fork inherits the upstream license
 (verify and state exact license here before divergence).
 
-IRIS GL rasterizer lineage: **Alice4** (Lawrence Kesteloot et al.) and **sgi-demos**.
+Reference IRIS GL rasterizer: **Alice4** and **sgi-demos**.
 Reference emulation: **MAME** SGI drivers, **IRIS** (techomancer), **ares**.
 
 
 ## Upstream N64_MiSTer notes
 
-## Hardware Requirements
+### Hardware Requirements
 SDRAM of any size is required.
 32Mbyte SDRAM can only be used for games up to 16Mbyte in size.
 
-## Bios
+### Bios
 Rename your PIF ROM file (e.g. `pif.ntsc.rom` ) and place it in the `./games/N64/` folder as `boot.rom`
 
-## Error messages
+### Error messages
 
 If there is a recognized problem, an overlay is displayed, showing which error has occured.
 Errors are hex encoded by bits, so the error code can represent more than 1 error.
@@ -167,8 +162,8 @@ List of Errors:
 - Bit 0 - Memory access to unmapped area
 - Bit 1 - CPU Instruction not implemented, currently used for cache command only
 - Bit 2 - CPU stall timeout
-- Bit 3 - DDR3 timeout    
-- Bit 4 - FPU internal exception    
+- Bit 3 - DDR3 timeout
+- Bit 4 - FPU internal exception
 - Bit 5 - PI error
 - Bit 6 - critical Exception occurred (heuristic, typically games crash when that happens, but can be false positive)
 - Bit 7 - PIF used up all 64 bytes for external communication or EEPROM command have unusual length
@@ -183,8 +178,8 @@ List of Errors:
 - Bit 16 - RSP read Fifo overflow
 - Bit 17 - DDR3 - RSP write Fifo overflow
 - Bit 18 - RSP IMEM/DMEM write/read address collision detected
-- Bit 19 - One fo the DDR3 requesters wants to write or read outside of RDRAM 
-- Bit 20 - RSP DMA wants to write outside of RDRAM 
+- Bit 19 - One fo the DDR3 requesters wants to write or read outside of RDRAM
+- Bit 20 - RSP DMA wants to write outside of RDRAM
 - Bit 21 - RDP pixel writeback wants to write outside of RDRAM
 - Bit 22 - RDP Z writeback wants to write outside of RDRAM
 - Bit 23 - RSP PC is modified by register access while RSP runs
